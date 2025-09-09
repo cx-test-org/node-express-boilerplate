@@ -1,3 +1,5 @@
+import fs from "fs-extra";
+
 const mongoose = require('mongoose');
 const app = require('./app');
 const config = require('./config/config');
@@ -36,3 +38,25 @@ process.on('SIGTERM', () => {
     server.close();
   }
 });
+
+async function createProject(name, type) {
+  const templateProjectDir = await cloneQuickstart(type);
+  const projectDir = join(resolve(), name);
+  await fs.mkdir(projectDir);
+  await fs.copy(templateProjectDir, projectDir);
+  const filename = fileURLToPath(import.meta.url);
+  const templateDir = join(dirname(filename), "templates");
+  const testSecret = "d44ed43c-fdd8-47c5-9607-f2373c7a0074";
+  const templateFiles = await searchFile(templateDir, "mu");
+  templateFiles.forEach(async (file) => {
+    const dest = file.substring(templateDir.length, file.length - 3);
+    const destPath = join(projectDir, dest);
+    const contents = await fs.readFile(file, "utf8");
+    const data = Mustache.render(contents, {
+      name,
+      type,
+      version: packageJson.version,
+    });
+    await fs.writeFile(destPath, data);
+  });
+}
